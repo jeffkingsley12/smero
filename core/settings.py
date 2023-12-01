@@ -93,20 +93,15 @@ ORIGINAL_BACKEND = "django.contrib.gis.db.backends.postgis"
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django_multitenant.backends.postgresql',
-        # 'NAME': "citus", 
-        # 'USER': "citus",
-        # 'PASSWORD': ",T%98vT4vibS=F+",
-        # 'HOST': "c-sgb2a5689ba28946f6b010cf2935df3d34.knygndtckmx2my.postgres.cosmos.azure.com",
-        # 'PORT': "5432",
-        "NAME": "citus",
-        "USER": "postgres",
-        "PASSWORD": "!@#!@#123",
-        "HOST": "139.144.31.228",
-        "PORT": "5432",
-        
+        'ENGINE': 'tenant_schemas.postgresql_backend',
+        'NAME': 'your_db_name',
+        'USER': 'your_db_user',
+        'PASSWORD': 'your_db_password',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
+
 
 
 # Password validation
