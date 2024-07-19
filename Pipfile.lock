@@ -1,0 +1,15 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+Django = "==3.2.10"
+django-multitenant = "==2.4.0"
+psycopg2-binary = "==2.9.1"
+django-citus = "==3.2.1"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"
