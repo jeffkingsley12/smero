@@ -1,4 +1,5 @@
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import Group
+from .models import CommonUser as User
 from rest_framework import viewsets
 from rest_framework.generics import RetrieveAPIView
 from rest_framework import permissions
@@ -24,17 +25,6 @@ from .commons import Account
 from .models import  Level, Student, Teacher, ClassTeacher, SchoolWorker
 
 
-from django_multitenant import views
-from django_multitenant.utils import *
-from django_multitenant.views import TenantModelViewSet
-
-
-
-def tenant_func(request):
-    return Account.objects.filter(username=request.user).first()
-
-
-views.get_tenant = tenant_func
 
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()
@@ -80,22 +70,22 @@ class GroupViewSet(viewsets.ModelViewSet):
 
 
 
-class AccountViewSet(TenantModelViewSet):
+class AccountViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows groups to be viewed or edited.
     """
 
-    model_class = Account
+    queryset = Account.objects.all()
     serializer_class = AccountSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-class LevelViewSet(TenantModelViewSet):
+class LevelViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows groups to be viewed or edited.
     """
 
-    model_class = Level
+    queryset = Level.objects.all()
     serializer_class = LevelSerializer
     permission_classes = [permissions.IsAuthenticated]
     
@@ -150,12 +140,6 @@ class AccountListView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(["GET", "POST"])
-def student_list_view(request):
-    current_tenant = set_current_tenant
-    students = Student.objects.filter(account=current_tenant)
-    return render(request, 'student_list.html', {'students': students})
 
     
 

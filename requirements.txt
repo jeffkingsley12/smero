@@ -1,5 +1,7 @@
-
-Django==3.2.10
-django-multitenant==2.4.0
-psycopg2-binary==2.9.1
-django-citus==3.2.1
+Django>=4.1,<4.2
+psycopg2-binary==2.9.9
+python-decouple==3.8
+django-money
+django-guardian
+djangorestframework-simplejwt
+Pillow

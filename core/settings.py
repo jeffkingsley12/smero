@@ -12,11 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
-from decouple import config
-
-DJANGO_SUPERUSER_USERNAME = config('DJANGO_SUPERUSER_USERNAME')
-DJANGO_SUPERUSER_PASSWORD = config('DJANGO_SUPERUSER_PASSWORD')
-DJANGO_SUPERUSER_EMAIL = config('DJANGO_SUPERUSER_EMAIL')
+from decouple import config, Csv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,23 +22,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-%#ivd89rzgz$*4m-++w4b!dk1s5^v(%71c(3tjz-qe$e2bg&+x'
+SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost', cast=Csv())
 
 
 # Application definition
 
 INSTALLED_APPS = [
     'users',
-    'django.contrib.gis',
-    'rest_framework_gis',
+    'finance',
     'rest_framework',
     'guardian',
-    'django_multitenant',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -52,6 +46,7 @@ INSTALLED_APPS = [
     #'common',
     'django_filters',
     'rest_framework_simplejwt',
+    'djmoney',
 ]
 
 MIDDLEWARE = [
@@ -62,7 +57,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'django_multitenant.middlewares.MultitenantMiddleware',
     'users.middleware.TimezoneMiddleware',
 ]
 
@@ -86,19 +80,18 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
-ORIGINAL_BACKEND = "django.contrib.gis.db.backends.postgis"
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
     'default': {
-        'ENGINE': 'tenant_schemas.postgresql_backend',
-        'NAME': 'your_db_name',
-        'USER': 'your_db_user',
-        'PASSWORD': 'your_db_password',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST', default='localhost'),
+        'PORT': config('DB_PORT', default='5432'),
     }
 }
 
@@ -127,7 +120,7 @@ AUTHENTICATION_BACKENDS = (
     'guardian.backends.ObjectPermissionBackend',
 )
 
-#AUTH_USER_MODEL = 'users.Account'
+AUTH_USER_MODEL = 'users.CommonUser'
 #LOGIN_REDIRECT_URL = 'account'
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
@@ -150,9 +143,8 @@ STATIC_URL = 'static/'
 MEDIA_URL = 'media/'
 
 
-MEDIAFILES_DIRS =[ 
-   os.path.join(BASE_DIR, 'media'),
-]
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 STATICFILES_DIRS = [
    os.path.join(BASE_DIR, 'static'),
 ]

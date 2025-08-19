@@ -1,62 +1,42 @@
 from django.db import models
-
-# Create your models here.
 from django.utils import timezone
 from decimal import Decimal
 import uuid
-from django_multitenant.fields import *
-from django_multitenant.models import *
-#from apps.corecode.models import AcademicSession, AcademicTerm, StudentClass
-from users.models import *
-from django.db import models
-from moneyfield import MoneyField
-from decimal import Decimal
+from users.models import Account, Student
+from djmoney.models.fields import MoneyField
 
-
-
-class AcademicYear(TenantModel):
+class AcademicYear(models.Model):
     name = models.CharField(max_length=20)
-    school = TenantForeignKey(School, on_delete=models.CASCADE)
+    school = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='academic_years')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    account = TenantForeignKey(Account, on_delete=models.CASCADE)
-    
-    class TenantMeta:
-        tenant_field_name = 'account_id'
 
-class FinanceCategory(TenantModel):
+class FinanceCategory(models.Model):
     name = models.CharField(max_length=50)
     description = models.TextField()
-    school = TenantForeignKey(School, on_delete=models.CASCADE)
+    school = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='finance_categories')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
-    class TenantMeta:
-        tenant_field_name = 'account_id'
 
-class Expense(TenantModel):
+class Expense(models.Model):
     description = models.CharField(max_length=100)
     amount = MoneyField(max_digits=10, decimal_places=2)
-    category = TenantForeignKey(FinanceCategory, on_delete=models.CASCADE)
-    academic_year = TenantForeignKey(AcademicYear, on_delete=models.CASCADE)
+    category = models.ForeignKey(FinanceCategory, on_delete=models.CASCADE)
+    academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE)
+    school = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='expenses')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
-    class TenantMeta:
-        tenant_field_name = 'account_id'
 
-class Revenue(TenantModel):
+class Revenue(models.Model):
     source = models.CharField(max_length=100)
     amount = MoneyField(max_digits=10, decimal_places=2)
-    category = TenantForeignKey(FinanceCategory, on_delete=models.CASCADE)
-    academic_year = TenantForeignKey(AcademicYear, on_delete=models.CASCADE)
+    category = models.ForeignKey(FinanceCategory, on_delete=models.CASCADE)
+    academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE)
+    school = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='revenues')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
-    class TenantMeta:
-        tenant_field_name = 'account_id'
 
-class Transaction(TenantModel):
+class Transaction(models.Model):
     TYPE_CHOICES = [
         ('income', 'Income'),
         ('expense', 'Expense'),
@@ -66,29 +46,21 @@ class Transaction(TenantModel):
     date = models.DateField()
     description = models.CharField(max_length=100)
     amount = MoneyField(max_digits=10, decimal_places=2)
-    school = TenantForeignKey(School, on_delete=models.CASCADE)
+    school = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='transactions')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
-    class TenantMeta:
-        tenant_field_name = 'account_id'
 
-class Payment(TenantModel):
-    student = TenantForeignKey(Student, on_delete=models.CASCADE)  # You might need to import the Student model
+class Payment(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
     amount = MoneyField(max_digits=10, decimal_places=2)
-    academic_year = TenantForeignKey(AcademicYear, on_delete=models.CASCADE)
-    school = TenantForeignKey(School, on_delete=models.CASCADE)
+    academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE)
+    school = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='payments')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
-    class TenantMeta:
-        tenant_field_name = 'account_id'
-        
-        
         
 class FinanceReport(models.Model):
     academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE)
-    school = models.ForeignKey(School, on_delete=models.CASCADE)
+    school = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='finance_reports')
     report_date = models.DateField()
 
     # Income fields
@@ -106,5 +78,4 @@ class FinanceReport(models.Model):
     net_income_loss = MoneyField(max_digits=10, decimal_places=2)
 
     def __str__(self):
-        
-        return f"Finance report for {self.academic_year} - {self.school}" 
+        return f"Finance report for {self.academic_year} - {self.school}"
