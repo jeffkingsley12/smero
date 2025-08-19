@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 
+app_name = 'finance'
 router = DefaultRouter()
 router.register(r'academic-years', views.AcademicYearViewSet)
 router.register(r'finance-categories', views.FinanceCategoryViewSet)

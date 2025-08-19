@@ -8,8 +8,6 @@ from users import views
 from .views import AccountListView, AccountDetailView, StudentViewSet
 
 app_name = "users"
-
-
 router = routers.DefaultRouter()
 router.register(r'users', views.UserViewSet)
 router.register(r'groups', views.GroupViewSet)
