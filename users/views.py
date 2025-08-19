@@ -25,7 +25,6 @@ from .commons import Account
 from .models import  Level, Student, Teacher, ClassTeacher, SchoolWorker
 
 
-from django_multitenant.utils import *
 
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()
@@ -141,12 +140,6 @@ class AccountListView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(["GET", "POST"])
-def student_list_view(request):
-    current_tenant = set_current_tenant
-    students = Student.objects.filter(account=current_tenant)
-    return render(request, 'student_list.html', {'students': students})
 
     
 
