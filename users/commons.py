@@ -17,6 +17,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.models import Group, Permission
 from . utils import *
 from . manager import AccountManager
+from .models import Country, Account
 
 class RoleEnum(Enum):
     TEACHER = "TEACHER"
@@ -28,60 +29,11 @@ class RoleEnum(Enum):
     CLASS_TEACHER = "CLASS_TEACHER"
     
     
-class Country(models.Model):
-    name = models.CharField(max_length=255, default="Uganda")
-    country = models.CharField(
-        max_length=30, choices=COUNTRIES, blank=True, default="UGA"
-    )
-   
-    def __str__(self):
-        return self.name
     
 # for coun in COUNTRIES:
 #     coun_object = Country(name=coun[1], country=coun[0])
 #     coun_object.save()
 
-class Account(TenantModel):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=255)
-    username = models.ForeignKey(BaseUser, on_delete=models.CASCADE)
-    password = models.CharField(max_length=255)
-    school_type = models.CharField(max_length=255, choices=SCHOOL_TYPES, default='PRIMARY')
-    address = models.CharField(max_length=255)
-    city = models.CharField(max_length=255)
-    state = models.CharField(max_length=255)
-    zipcode = models.CharField(max_length=255)
-    domain_url = models.CharField(max_length=255)
-    country = models.ForeignKey(Country, on_delete=models.PROTECT)
-    created_on = models.DateTimeField(auto_now_add=True)
-    partition_column = models.UUIDField(default=uuid.uuid4, editable=False)
-    def __str__(self):
-         
-        return self.name
-    
-   
-    def get_absolute_url(self):
-        return reverse('account_detail', args=(self.pk,))
-    
-    # REQUIRED_FIELDS = ['username', 'password']
-    # EMAIL_FIELD = 'email'
-    # USERNAME_FIELD = 'username'
-    # REQUIRED_FIELDS = ['email']
-       
-    class TenantMeta:
-        tenant_field_name = 'id'
-    
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['id',
-                                            'domain_url','name',
-                                             'username_id', 'country_id',
-                                            'partition_column'
-                                            ], name='unique_school_account')
-        ]
-        
-    def get_edit_url(self):
-        return reverse('account_edit', args=(self.pk,))
 
         
 class Common(TenantModel):

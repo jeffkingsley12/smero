@@ -1,15 +1,33 @@
 from django.db import models
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser, BaseUserManager
-from django_multitenant.models import TenantModel
-from django_multitenant.fields import TenantForeignKey
 from django.utils.translation import gettext_lazy as _
 import uuid
 from django.urls import reverse
+from .utils import SCHOOL_TYPES, COUNTRIES
 
-class Account(TenantModel):
-    account_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+class Country(models.Model):
+    name = models.CharField(max_length=255, default="Uganda")
+    country = models.CharField(
+        max_length=30, choices=COUNTRIES, blank=True, default="UGA"
+    )
+
+    def __str__(self):
+        return self.name
+
+class Account(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
-    # Add other necessary fields for the Account model
+    # The user who owns this account, can be a superuser or a staff
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='accounts')
+    school_type = models.CharField(max_length=255, choices=SCHOOL_TYPES, default='PRIMARY')
+    address = models.CharField(max_length=255)
+    city = models.CharField(max_length=255)
+    state = models.CharField(max_length=255)
+    zipcode = models.CharField(max_length=255)
+    domain_url = models.CharField(max_length=255)
+    country = models.ForeignKey(Country, on_delete=models.PROTECT)
+    created_on = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
@@ -27,9 +45,23 @@ class CustomUserManager(BaseUserManager):
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
+
+        if 'account' not in extra_fields:
+            # This is still tricky. Let's assume the first account is the system account
+            # This will fail if there are no accounts.
+            system_account = Account.objects.first()
+            if not system_account:
+                # This is not ideal, but we need a user for the account, and an account for the user.
+                # We can't create the superuser without an account.
+                # This logic needs to be revisited. For now, we can't create a superuser
+                # without an account already existing.
+                raise ValueError("Cannot create a superuser without an existing Account.")
+
+            extra_fields['account'] = system_account
+
         return self.create_user(email, password, **extra_fields)
 
-class CommonUser(AbstractUser, TenantModel):
+class CommonUser(AbstractUser):
     USER_TYPES = (
         ('DIRECTOR', 'Director'),
         ('HEADTEACHER', 'Headteacher'),
@@ -52,17 +84,14 @@ class CommonUser(AbstractUser, TenantModel):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['user_id', 'account_id', 'email', 'registration_number', 'username'], 
+            models.UniqueConstraint(fields=['user_id', 'account', 'email', 'registration_number', 'username'],
                                     name='unique_user_account')
         ]
-
-    class TenantMeta:
-        tenant_field_name = 'account_id'
 
     def get_absolute_url(self):
         return reverse(f"{self.user_type.lower()}-detail", kwargs={"pk": self.pk})
 
-class Level(TenantModel):
+class Level(models.Model):
     level_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name="school_accounts")
@@ -70,28 +99,11 @@ class Level(TenantModel):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['level_id', 'name', 'account_id'], name='unique_level_account')
+            models.UniqueConstraint(fields=['level_id', 'name', 'account'], name='unique_level_account')
         ]
 
     def __str__(self):
         return f"{self.account} {self.name}"
-
-    class TenantMeta:
-        tenant_field_name = 'account_id'
-
-class ClassTeacher(CommonUser):
-    level = TenantForeignKey(Level, on_delete=models.SET_NULL, null=True, related_name='school_class_teacher')
-
-    def save(self, *args, **kwargs):
-        self.user_type = 'CLASSTEACHER'
-        super().save(*args, **kwargs)
-
-class Teacher(CommonUser):
-    level = TenantForeignKey(Level, on_delete=models.SET_NULL, null=True, related_name='school_teacher')
-
-    def save(self, *args, **kwargs):
-        self.user_type = 'TEACHER'
-        super().save(*args, **kwargs)
 
 class Director(CommonUser):
     def save(self, *args, **kwargs):
@@ -125,7 +137,7 @@ class SchoolWorker(CommonUser):
         verbose_name_plural = _("School Workers")
 
 class ClassTeacher(CommonUser):
-    level = TenantForeignKey(Level, on_delete=models.SET_NULL, null=True, related_name='school_class_teacher')
+    level = models.ForeignKey(Level, on_delete=models.SET_NULL, null=True, related_name='school_class_teacher')
 
     def save(self, *args, **kwargs):
         self.user_type = 'CLASSTEACHER'
@@ -136,7 +148,7 @@ class ClassTeacher(CommonUser):
         verbose_name_plural = _("Class Teachers")
 
 class Teacher(CommonUser):
-    level = TenantForeignKey(Level, on_delete=models.SET_NULL, null=True, related_name='school_teacher')
+    level = models.ForeignKey(Level, on_delete=models.SET_NULL, null=True, related_name='school_teacher')
 
     def save(self, *args, **kwargs):
         self.user_type = 'TEACHER'
@@ -147,8 +159,8 @@ class Teacher(CommonUser):
         verbose_name_plural = _("Teachers")
 
 class Student(CommonUser):
-    level = TenantForeignKey(Level, on_delete=models.SET_NULL, null=True, related_name='students_class')
-    class_teacher = TenantForeignKey(ClassTeacher, on_delete=models.SET_NULL, null=True, related_name='students_class_teacher')
+    level = models.ForeignKey(Level, on_delete=models.SET_NULL, null=True, related_name='students_class')
+    class_teacher = models.ForeignKey(ClassTeacher, on_delete=models.SET_NULL, null=True, related_name='students_class_teacher')
     passport = models.ImageField(blank=True, upload_to="students/passports/")
 
     def save(self, *args, **kwargs):
