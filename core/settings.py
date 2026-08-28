@@ -12,11 +12,11 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
-from decouple import config
+from decouple import Csv, config
 
-DJANGO_SUPERUSER_USERNAME = config('DJANGO_SUPERUSER_USERNAME')
-DJANGO_SUPERUSER_PASSWORD = config('DJANGO_SUPERUSER_PASSWORD')
-DJANGO_SUPERUSER_EMAIL = config('DJANGO_SUPERUSER_EMAIL')
+DJANGO_SUPERUSER_USERNAME = config('DJANGO_SUPERUSER_USERNAME', default='')
+DJANGO_SUPERUSER_PASSWORD = config('DJANGO_SUPERUSER_PASSWORD', default='')
+DJANGO_SUPERUSER_EMAIL = config('DJANGO_SUPERUSER_EMAIL', default='')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,12 +26,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-%#ivd89rzgz$*4m-++w4b!dk1s5^v(%71c(3tjz-qe$e2bg&+x'
+SECRET_KEY = config('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DJANGO_DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
 
 
 # Application definition
@@ -93,12 +93,12 @@ ORIGINAL_BACKEND = "django.contrib.gis.db.backends.postgis"
 
 DATABASES = {
     'default': {
-        'ENGINE': 'tenant_schemas.postgresql_backend',
-        'NAME': 'your_db_name',
-        'USER': 'your_db_user',
-        'PASSWORD': 'your_db_password',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'ENGINE': ORIGINAL_BACKEND,
+        'NAME': config('DB_NAME', default='smero'),
+        'USER': config('DB_USER', default='postgres'),
+        'PASSWORD': config('DB_PASSWORD', default=''),
+        'HOST': config('DB_HOST', default='localhost'),
+        'PORT': config('DB_PORT', default='5432'),
     }
 }
 
@@ -150,9 +150,7 @@ STATIC_URL = 'static/'
 MEDIA_URL = 'media/'
 
 
-MEDIAFILES_DIRS =[ 
-   os.path.join(BASE_DIR, 'media'),
-]
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 STATICFILES_DIRS = [
    os.path.join(BASE_DIR, 'static'),
 ]
@@ -163,7 +161,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10
+    'PAGE_SIZE': 10,
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
 }
 LOGGING = {
     'version': 1,

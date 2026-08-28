@@ -71,10 +71,18 @@ This project implements a school management system built with Django, utilizing 
 1. Clone the repository.
 2. Create and activate a virtual environment.
 3. Install dependencies with `pipenv install` or `pip install -r requirements.txt`.
-4. Run database migrations with `python manage.py migrate`.
-5. Create a superuser account with `python manage.py createsuperuser`.
-6. Configure your database settings in `settings.py`.
+4. Copy `core/.env.example` to `core/.env` and fill it in. `DJANGO_SECRET_KEY` is required;
+   the database connection and `DJANGO_DEBUG` / `DJANGO_ALLOWED_HOSTS` are read from there too.
+   Never commit `core/.env`.
+5. Run database migrations with `python manage.py migrate`.
+6. Create a superuser account with `python manage.py createsuperuser`.
 7. Run the server with `python manage.py runserver`.
+
+### Configuration
+
+All secrets and environment-specific settings are read from `core/.env` via
+[python-decouple](https://pypi.org/project/python-decouple/). `DJANGO_DEBUG` defaults to `False`,
+so it must be set explicitly for local development.
 
 ## Deployment
 
