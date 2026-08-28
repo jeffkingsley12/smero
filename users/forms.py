@@ -1,62 +1,52 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.models import Group
-from .models import Level, Director, Headteacher, ClassTeacher, Teacher, SchoolWorker, Student
+from django.contrib.auth.forms import UserChangeForm, UserCreationForm
+
+from .models import CommonUser, Level
+
+USER_FIELDS = [
+    'email',
+    'first_name',
+    'last_name',
+    'phone_number',
+    'gender',
+    'date_of_birth',
+    'registration_number',
+]
 
 
-class LevelForm(ModelForm):
+class CommonUserCreationForm(UserCreationForm):
+    class Meta:
+        model = CommonUser
+        fields = ['email', 'account', 'user_type', *USER_FIELDS[1:]]
+
+
+class CommonUserChangeForm(UserChangeForm):
+    class Meta:
+        model = CommonUser
+        fields = ['account', 'user_type', *USER_FIELDS]
+
+
+class StaffForm(forms.ModelForm):
+    """Directors, headteachers, teachers and class teachers."""
+
+    class Meta:
+        model = CommonUser
+        fields = [*USER_FIELDS, 'level']
+
+
+class SchoolWorkerForm(forms.ModelForm):
+    class Meta:
+        model = CommonUser
+        fields = [*USER_FIELDS, 'job_title']
+
+
+class StudentForm(forms.ModelForm):
+    class Meta:
+        model = CommonUser
+        fields = [*USER_FIELDS, 'level', 'class_teacher', 'student_role', 'passport']
+
+
+class LevelForm(forms.ModelForm):
     class Meta:
         model = Level
-        fields = ["name"]
-
-class DirectorForm(ModelForm):
-    
-    name = forms.CharField(
-        required=False, widget=forms.TextInput(attrs={"placeholder": "Name"})
-    )
-    email = forms.EmailField(
-        required=False, widget=forms.TextInput(attrs={"placeholder": "Email"})
-    )
-    
-    class Meta:
-        model = Director
-        fields = ["first_name", "last_name", "email", "phone_number", "user_permissions", "groups"]
-    
-    def __init__(self, *args, **kwargs):
-        instance = kwargs.get("instance", None)
-        if instance:
-            kwargs.setdefault("initial", {}).update({"email": instance.user.email})
-        super().__init__(*args, **kwargs)
-
-    def save(self, commit=True):
-        instance = super().save(commit=commit)
-        if "email" in self.cleaned_data:
-            instance.user.email = self.cleaned_data["email"]
-            if commit:
-                instance.user.save()
-        return instance
-    
-class HeadteacherForm(ModelForm):
-    class Meta:
-        model = Headteacher
-        fields = ["first_name", "last_name", "email", "phone_number", "user_permissions", "groups"]
-
-class ClassTeacherForm(ModelForm):
-    class Meta:
-        model = ClassTeacher
-        fields = ["first_name", "last_name", "email", "phone_number", "level", "user_permissions", "groups"]
-
-class TeacherForm(ModelForm):
-    class Meta:
-        model = Teacher
-        fields = ["first_name", "last_name", "email", "phone_number", "level", "user_permissions", "groups"]
-
-class SchoolWorkerForm(ModelForm):
-    class Meta:
-        model = SchoolWorker
-        fields = ["first_name", "last_name", "email", "phone_number", "level", "user_permissions", "groups"]
-
-class GroupForm(forms.ModelForm):
-    class Meta:
-        model = Group
-        fields = ['name']
+        fields = ['name', 'school_class']

@@ -1,229 +1,138 @@
-from django.contrib.auth.models import User, Group
-from rest_framework import viewsets
-from rest_framework.generics import RetrieveAPIView
-from rest_framework import permissions
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.decorators import api_view
-from .commons import SECONDARY, PRIMARY
-from rest_framework import serializers
+from django.contrib.auth.models import Group
+from django_multitenant.utils import set_current_tenant
+from rest_framework import permissions, viewsets
 
-from users.serializers import (
-    UserSerializer,
-    GroupSerializer,
+from .models import (
+    Account,
+    ClassTeacher,
+    CommonUser,
+    Director,
+    Headteacher,
+    Level,
+    SchoolWorker,
+    Student,
+    Teacher,
+)
+from .permissions import IsSameAccount, IsSchoolStaffOrReadOnly
+from .serializers import (
     AccountSerializer,
+    ClassTeacherSerializer,
+    DirectorSerializer,
+    GroupSerializer,
+    HeadteacherSerializer,
     LevelSerializer,
+    SchoolWorkerSerializer,
     StudentSerializer,
     TeacherSerializer,
-    ClassTeacherSerializer,
-    SchoolWorkerSerializer
-    
+    UserSerializer,
 )
-from .commons import Account
-from .models import  Level, Student, Teacher, ClassTeacher, SchoolWorker
 
 
-from django_multitenant import views
-from django_multitenant.utils import *
-from django_multitenant.views import TenantModelViewSet
+class TenantScopedViewSet(viewsets.ModelViewSet):
+    """Restricts every queryset to the requesting user's school.
+
+    The tenant is set here rather than only in middleware because DRF
+    authenticates inside the view (a JWT request is still anonymous when
+    middleware runs), and the explicit `get_queryset` filter means a missing
+    thread-local can never widen the result set.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsSameAccount, IsSchoolStaffOrReadOnly]
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        account = getattr(request.user, 'account', None)
+        if account is not None:
+            set_current_tenant(account)
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        account_id = self.request.user.account_id
+        if account_id is None:
+            return queryset.none()
+        return queryset.filter(account_id=account_id)
+
+    def perform_create(self, serializer):
+        serializer.save(account_id=self.request.user.account_id)
 
 
+class UserViewSet(TenantScopedViewSet):
+    """Every person at the requesting user's school, regardless of role."""
 
-def tenant_func(request):
-    return Account.objects.filter(username=request.user).first()
+    queryset = CommonUser.objects.all()
+    serializer_class = UserSerializer
+    filterset_fields = ['user_type', 'level', 'status']
+    search_fields = ['first_name', 'last_name', 'email', 'registration_number']
 
 
-views.get_tenant = tenant_func
+class DirectorViewSet(TenantScopedViewSet):
+    queryset = Director.objects.all()
+    serializer_class = DirectorSerializer
 
-class StudentViewSet(viewsets.ModelViewSet):
-    queryset = Student.objects.all()
-    serializer_class = StudentSerializer
-    permission_classes = [permissions.IsAuthenticated]
 
-class TeacherViewSet(viewsets.ModelViewSet):
+class HeadteacherViewSet(TenantScopedViewSet):
+    queryset = Headteacher.objects.all()
+    serializer_class = HeadteacherSerializer
+
+
+class TeacherViewSet(TenantScopedViewSet):
     queryset = Teacher.objects.all()
     serializer_class = TeacherSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    
-class ClassTeacherViewSet(viewsets.ModelViewSet):
+    filterset_fields = ['level']
+
+
+class ClassTeacherViewSet(TenantScopedViewSet):
     queryset = ClassTeacher.objects.all()
     serializer_class = ClassTeacherSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    
-class SchoolWorkerViewSet(viewsets.ModelViewSet):
+    filterset_fields = ['level']
+
+
+class SchoolWorkerViewSet(TenantScopedViewSet):
     queryset = SchoolWorker.objects.all()
     serializer_class = SchoolWorkerSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    
-    
-class UserViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows users to be viewed or edited.
-    """
-
-    queryset = User.objects.all().order_by("-date_joined")
-    serializer_class = UserSerializer
-    permission_classes = [permissions.IsAdminUser]
 
 
-class GroupViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows groups to be viewed or edited.
-    """
-
-    queryset = Group.objects.all()
-    serializer_class = GroupSerializer
-    permission_classes = [permissions.IsAdminUser]
+class StudentViewSet(TenantScopedViewSet):
+    queryset = Student.objects.all()
+    serializer_class = StudentSerializer
+    filterset_fields = ['level', 'class_teacher', 'status']
+    search_fields = ['first_name', 'last_name', 'registration_number']
 
 
-
-class AccountViewSet(TenantModelViewSet):
-    """
-    API endpoint that allows groups to be viewed or edited.
-    """
-
-    model_class = Account
-    serializer_class = AccountSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-
-class LevelViewSet(TenantModelViewSet):
-    """
-    API endpoint that allows groups to be viewed or edited.
-    """
-
-    model_class = Level
+class LevelViewSet(TenantScopedViewSet):
+    queryset = Level.objects.all()
     serializer_class = LevelSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    
-   
-    
-    # def create(self, request, *args, **kwargs):
-    #     # Fetch the associated account instance
-    #     account_id = get_current_tenant
-    #     try:
-    #         account = Account.objects.get(id=account_id)
-    #     except Account.DoesNotExist:
-    #         raise serializers.ValidationError("Account with the provided ID does not exist.")
-
-    #     # Customize the school_class based on school_type
-    #     if account.school_type == 'PRIMARY':
-    #         request.data['school_class'] = 'PRIMARY'
-    #     elif account.school_type == 'SECONDARY':
-    #         request.data['school_class'] = 'SECONDARY'
-    #     # Add more conditions based on your needs
-
-    #     return super(LevelViewSet, self).create(request, *args, **kwargs)
-
-    # def get_serializer_context(self):
-    #     # You can customize this method to include additional context data
-    #     return {'request': self.request}
-     
+    filterset_fields = ['school_class']
 
 
+class AccountViewSet(viewsets.ModelViewSet):
+    """The requesting user's own school.
 
-class AccountDetailView(RetrieveAPIView):
-    """
-    Retrieve details of a single Account.
+    Accounts are the tenants themselves, so they are scoped by primary key
+    rather than by an `account` column, and only superusers may create them.
     """
 
     queryset = Account.objects.all()
     serializer_class = AccountSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsSameAccount]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_superuser:
+            return self.queryset
+        if user.account_id is None:
+            return self.queryset.none()
+        return self.queryset.filter(pk=user.account_id)
+
+    def get_permissions(self):
+        if self.action in {'create', 'destroy'}:
+            return [permissions.IsAdminUser()]
+        return super().get_permissions()
 
 
-class AccountListView(APIView):
-    """
-    List all Accounts, or create a new account.
-    """
+class GroupViewSet(viewsets.ModelViewSet):
+    """Permission groups are global, so they are superuser-only."""
 
+    queryset = Group.objects.all()
+    serializer_class = GroupSerializer
     permission_classes = [permissions.IsAdminUser]
-
-    def get(self, request):
-        accounts = Account.objects.all()
-        serializer = AccountSerializer(accounts, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = AccountSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(["GET", "POST"])
-def student_list_view(request):
-    current_tenant = set_current_tenant
-    students = Student.objects.filter(account=current_tenant)
-    return render(request, 'student_list.html', {'students': students})
-
-    
-
-
-# class LoginView(LoginView):
-#     template_name = 'registration/login.html'
-#     success_url = reverse_lazy('account_detail')  # Add 'pk' argument 
-
-#     def post(self, request, *args, **kwargs):
-#         if request.user.is_authenticated:
-#             def get_success_url(self):
-#                 return HttpResponseRedirect(reverse("accounts", kwargs={'pk': request.user.pk}))
-
-#         username = request.POST.get('username')
-#         password = request.POST.get('password')
-#         user = authenticate(request, username=username, password=password)
-
-#         if user is not None:
-#             login(request, user)
-#             # Redirect to the user's account_detail page
-#             return HttpResponseRedirect(reverse("account_detail", kwargs={'pk': user.pk}))
-#         else:
-#             # Handle login failure
-#             return render(request, 'registration/login.html', {'message': 'Invalid credentials'})
-        
-
-
-# class AccountViewSet(View):
-#     permission_classes = (IsAuthenticated,)
-#     template_name = "users/user.html"
-    
-    
-#     def get(self, request, pk=None):
-#         # Check if the user is authenticated.
-#         if not request.user.is_authenticated:
-#             raise PermissionDenied('You must be logged in to access this page.')
-
-#         # Check if the account exists.
-#         try:
-#             account = Account.objects.get(pk=pk)
-#         except Account.DoesNotExist:
-#             raise Http404('Account not found.')
-
-#         # Check if the user is associated with the same school as the account.
-#         if account.level != request.user.account.level:
-#             raise PermissionDenied('You do not have permission to access this account.')
-
-#         # Display user account information here or return the account object to be used in the template.
-#         return render(request, self.template_name, {'account': account})
-
-# class AccountDetailView(DetailView):
-#     model = Account
-    
-# def account_detail(request, pk):
-#     account = Account.objects.get(pk=pk)
-#     context = {
-#         'account': account,
-#     }
-#     return render(request, 'users/user.html', context)
-
-
-# def logout_view(request):
-#     logout(request)
-#     return render(request, "users/user.html", {
-#                 "message": "Logged Out"
-#             })
-    
-
-
-
