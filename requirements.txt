@@ -1,5 +1,8 @@
-
-Django==3.2.10
-django-multitenant==2.4.0
-psycopg2-binary==2.9.1
-django-citus==3.2.1
+Django==4.2.16
+djangorestframework==3.17.2
+djangorestframework-simplejwt==5.5.1
+django-filter==25.1
+django-multitenant==4.1.1
+psycopg2-binary==2.9.12
+python-decouple==3.8
+Pillow==12.3.0

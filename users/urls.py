@@ -1,41 +1,26 @@
-from django.urls import path, include
-from django.conf import settings
-from django.conf.urls.static import static
-from . import views
-from django.contrib import admin
+from django.urls import include, path
 from rest_framework import routers
-from users import views
-from .views import AccountListView, AccountDetailView, StudentViewSet
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
 
-app_name = "users"
+from . import views
 
+app_name = 'users'
 
 router = routers.DefaultRouter()
-router.register(r'users', views.UserViewSet)
-router.register(r'groups', views.GroupViewSet)
-router.register(r'accounts', views.AccountViewSet, basename='accounts')
-router.register(r'classes', views.LevelViewSet, basename='levels')
-router.register(r"students", views.StudentViewSet)
-router.register(r"teachers", views.TeacherViewSet)
-router.register(r"Class_teacters", views.ClassTeacherViewSet)
-
+router.register(r'accounts', views.AccountViewSet, basename='account')
+router.register(r'levels', views.LevelViewSet, basename='level')
+router.register(r'users', views.UserViewSet, basename='user')
+router.register(r'groups', views.GroupViewSet, basename='group')
+router.register(r'directors', views.DirectorViewSet, basename='director')
+router.register(r'headteachers', views.HeadteacherViewSet, basename='headteacher')
+router.register(r'teachers', views.TeacherViewSet, basename='teacher')
+router.register(r'class-teachers', views.ClassTeacherViewSet, basename='classteacher')
+router.register(r'school-workers', views.SchoolWorkerViewSet, basename='schoolworker')
+router.register(r'students', views.StudentViewSet, basename='student')
 
 urlpatterns = [
-    
     path('', include(router.urls)),
-    path('accounts/', AccountListView.as_view(), name='account-list'),
-    path('accounts/<uuid:pk>/', AccountDetailView.as_view(), name='account-detail'),
+    path('auth/token/', TokenObtainPairView.as_view(), name='token-obtain-pair'),
+    path('auth/token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
+    path('auth/token/verify/', TokenVerifyView.as_view(), name='token-verify'),
 ]
-
-
-
-# from .views import AccountViewSet, LoginView, LogoutView, AccountDetailView
-
-# app_name = "users"
-
-# urlpatterns = [
-#     path('account/<str:pk>/', AccountViewSet.as_view(), name='account'),
-#     path('account/<str:pk>/detail/', AccountDetailView.as_view(), name='account_detail'),
-#     path('', LoginView.as_view(), name='login'),
-#     path('logout/', LogoutView.as_view(), name='logout'),
-# ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

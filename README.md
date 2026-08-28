@@ -1,115 +1,96 @@
-# Django Multitenant School Management System with Citus
+# Smero — multi-tenant school management
 
-This project implements a school management system built with Django, utilizing the django-multitenant library and Citus extension for PostgreSQL for multi-tenancy and scalability.
+A Django/DRF API for running several schools out of one database. Every row
+belongs to an `Account` (a school), and that account is the tenant key used by
+[django-multitenant](https://github.com/citusdata/django-multitenant).
 
-## System Overview
+## Implemented today
 
-- **Multi-School Management:**
-  - Manage multiple schools within a single Django application.
-  - Each school has its own set of data and users, isolated from other schools.
-- **Scalability with Citus:**
-  - Citus ensures efficient data storage and query processing for large datasets.
+- **Schools** (`users.Account`): name, type, domain, address.
+- **Levels** (`users.Level`): the classes within a school, unique by name per school.
+- **People** (`users.CommonUser`): one table holding directors, headteachers, class
+  teachers, teachers, school workers and students. The role lives in `user_type`,
+  and each role also has a proxy model (`Student`, `Teacher`, …) with its own
+  manager, admin page and API endpoint.
+- **Finance** (`finance`): academic years, categories, expenses, revenues,
+  transactions, student payments and per-year reports.
 
-## Features
+Courses, attendance and assignments are *not* implemented.
 
-### School Management
+## Tenancy model
 
-- Create, edit, and delete schools.
-- Manage school information (name, address, logo, etc.).
-- Add and remove users associated with the school.
+Isolation is enforced in three places, so no single mistake exposes another
+school's data:
 
-### User Management
+1. `users.middleware.TenantMiddleware` binds the logged-in user's account to the
+   thread and clears it after the response.
+2. `users.views.TenantScopedViewSet` sets the tenant again (DRF authenticates
+   after middleware runs, so a JWT request is still anonymous at that point) and
+   filters every queryset by `account_id`.
+3. `users.permissions.IsSameAccount` rejects any object from another account as
+   a backstop, and the database constraints are all scoped per account.
 
-- Create different user types (administrators, teachers, students, parents).
-- Manage user profiles and access permissions.
-- Assign users to specific schools.
+`account` is never writable through the API — it is taken from the requesting
+user — and `password`, `is_staff`, `is_superuser`, `groups` and
+`user_permissions` are not exposed by any serializer.
 
-### Course Management
+### Citus
 
-- Create, edit, and delete courses.
-- Assign courses to grades and teachers.
-- Manage course enrollments for students.
+The models are laid out for Citus (every table carries the tenant column and
+uses `TenantForeignKey`), but the tables are **not** distributed yet: Citus
+requires the distribution column to be part of every primary key and unique
+constraint, which Django cannot express without composite primary keys. Until
+that is resolved the project runs on plain PostgreSQL and tenancy is enforced by
+the application. The previous `0002_distribute_tables` migration was removed —
+it built primary keys on columns that never existed.
 
-### Grade Management
+## Requirements
 
-- Create and manage different grade levels.
-- Associate courses and students with grades.
-
-### Attendance Tracking
-
-- Record student attendance for courses.
-- Generate attendance reports.
-
-### Assignment Management
-
-- Create and manage assignments for courses.
-- Allow students to submit assignments.
-- Grade assignments and provide feedback.
-
-### Reporting
-
-- Generate reports on various aspects of school activities.
-- Analyze student performance and attendance.
-
-## Technologies
-
-- Django: Web framework
-- django-multitenant: Library for multi-tenancy in Django
-- Citus: PostgreSQL extension for distributed databases
-- PostgreSQL: Relational database
-- Python: Programming language
-
-## Prerequisites
-
-- Python 3.x
-- PostgreSQL
-- Citus extension for PostgreSQL
-- Pipenv (optional)
+- Python 3.10+
+- PostgreSQL 13+
 
 ## Installation
 
-1. Clone the repository.
-2. Create and activate a virtual environment.
-3. Install dependencies with `pipenv install` or `pip install -r requirements.txt`.
-4. Copy `core/.env.example` to `core/.env` and fill it in. `DJANGO_SECRET_KEY` is required;
-   the database connection and `DJANGO_DEBUG` / `DJANGO_ALLOWED_HOSTS` are read from there too.
-   Never commit `core/.env`.
-5. Run database migrations with `python manage.py migrate`.
-6. Create a superuser account with `python manage.py createsuperuser`.
-7. Run the server with `python manage.py runserver`.
+1. Clone the repository and create a virtual environment.
+2. `pip install -r requirements-dev.txt` (or `requirements.txt` without the lint tooling).
+3. Copy `core/.env.example` to `core/.env` and fill it in. `DJANGO_SECRET_KEY` is
+   required; the database connection, `DJANGO_DEBUG` and `DJANGO_ALLOWED_HOSTS`
+   are read from there too. Never commit `core/.env`.
+4. `python manage.py migrate`
+5. `python manage.py createsuperuser` — superusers have no account and can see
+   every school through the admin.
+6. `python manage.py runserver`
 
-### Configuration
+All settings come from the environment via
+[python-decouple](https://pypi.org/project/python-decouple/); `DJANGO_DEBUG`
+defaults to `False`.
 
-All secrets and environment-specific settings are read from `core/.env` via
-[python-decouple](https://pypi.org/project/python-decouple/). `DJANGO_DEBUG` defaults to `False`,
-so it must be set explicitly for local development.
+## API
 
-## Deployment
+Everything is under `/api/`, browsable at the root of that prefix:
 
-- This system can be deployed on various platforms like Heroku, AWS, or DigitalOcean.
-- Use appropriate configuration settings for the chosen platform.
-- Ensure proper security measures are in place for production environments.
+| Path | Contents |
+| --- | --- |
+| `/api/accounts/` | the requesting user's school |
+| `/api/levels/` | classes |
+| `/api/users/` | everyone at the school, filterable by `user_type` |
+| `/api/students/`, `/api/teachers/`, `/api/class-teachers/`, `/api/directors/`, `/api/headteachers/`, `/api/school-workers/` | one role each |
+| `/api/finance/…` | academic years, categories, expenses, revenues, transactions, payments, reports |
+| `/api/auth/token/` | JWT obtain / refresh / verify |
 
-## Customization
+Reads are open to any authenticated member of the school; writes require a
+director, headteacher, teacher or class teacher.
 
-- This system provides a basic framework and can be customized to specific needs.
-- Additional features and functionalities can be added based on requirements.
-- Modify models, views, and templates to personalize the system.
+## Development
 
-## Contributing
+```sh
+ruff check .                              # lint
+python manage.py makemigrations --check   # model/migration drift
+python manage.py test                     # tests, incl. cross-tenant isolation
+```
 
-- This project is open source and welcomes contributions.
-- Fork the repository, make your changes, and submit a pull request.
-- Follow the coding style and documentation guidelines.
+CI runs the same three commands against PostgreSQL on every pull request.
 
 ## License
 
-This project is licensed under the MIT License.
-
-## Additional Notes
-
-- Refer to the `settings.py` file for configurations related to django-multitenant and Citus.
-- Ensure you understand the concepts of multi-tenancy and Citus before deploying the system.
-- This readme provides a basic overview. Refer to the code and documentation for detailed information.
-
-Enjoy using this Django-Multitenant School Management System with Citus!
+MIT.

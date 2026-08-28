@@ -10,13 +10,11 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
-from pathlib import Path
 import os
-from decouple import Csv, config
+from datetime import timedelta
+from pathlib import Path
 
-DJANGO_SUPERUSER_USERNAME = config('DJANGO_SUPERUSER_USERNAME', default='')
-DJANGO_SUPERUSER_PASSWORD = config('DJANGO_SUPERUSER_PASSWORD', default='')
-DJANGO_SUPERUSER_EMAIL = config('DJANGO_SUPERUSER_EMAIL', default='')
+from decouple import Csv, config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -38,10 +36,8 @@ ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='localhost,127.0.0.1', ca
 
 INSTALLED_APPS = [
     'users',
-    'django.contrib.gis',
-    'rest_framework_gis',
+    'finance',
     'rest_framework',
-    'guardian',
     'django_multitenant',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -49,7 +45,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    #'common',
     'django_filters',
     'rest_framework_simplejwt',
 ]
@@ -62,7 +57,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'django_multitenant.middlewares.MultitenantMiddleware',
+    'users.middleware.TenantMiddleware',
     'users.middleware.TimezoneMiddleware',
 ]
 
@@ -86,14 +81,12 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
-ORIGINAL_BACKEND = "django.contrib.gis.db.backends.postgis"
-
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
     'default': {
-        'ENGINE': ORIGINAL_BACKEND,
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': config('DB_NAME', default='smero'),
         'USER': config('DB_USER', default='postgres'),
         'PASSWORD': config('DB_PASSWORD', default=''),
@@ -122,13 +115,8 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-AUTHENTICATION_BACKENDS = (
-    'django.contrib.auth.backends.ModelBackend', # this is default
-    'guardian.backends.ObjectPermissionBackend',
-)
+AUTH_USER_MODEL = 'users.CommonUser'
 
-#AUTH_USER_MODEL = 'users.Account'
-#LOGIN_REDIRECT_URL = 'account'
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
@@ -147,13 +135,10 @@ USE_TZ = True
 
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 MEDIA_URL = 'media/'
-
-
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-STATICFILES_DIRS = [
-   os.path.join(BASE_DIR, 'static'),
-]
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
@@ -165,25 +150,38 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
 }
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=config('JWT_ACCESS_MINUTES', default=15, cast=int)),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=config('JWT_REFRESH_DAYS', default=1, cast=int)),
+    'USER_ID_FIELD': 'user_id',
+    'USER_ID_CLAIM': 'user_id',
+}
+
+# Set DJANGO_SQL_LOGGING=True to echo every query; off by default because it
+# makes management commands unreadable.
 LOGGING = {
     'version': 1,
-    'filters': {
-        'require_debug_true': {
-            '()': 'django.utils.log.RequireDebugTrue',
-        }
-    },
+    'disable_existing_loggers': False,
     'handlers': {
-        'console': {
-            'level': 'DEBUG',
-            'filters': ['require_debug_true'],
-            'class': 'logging.StreamHandler',
-        }
+        'console': {'class': 'logging.StreamHandler'},
     },
+    'root': {'handlers': ['console'], 'level': 'INFO'},
     'loggers': {
         'django.db.backends': {
-            'level': 'DEBUG',
+            'level': 'DEBUG' if config('DJANGO_SQL_LOGGING', default=False, cast=bool) else 'INFO',
             'handlers': ['console'],
+            'propagate': False,
         }
-    }
+    },
 }

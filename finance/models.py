@@ -1,110 +1,162 @@
-from django.db import models
-
-# Create your models here.
-from django.utils import timezone
-from decimal import Decimal
 import uuid
-from django_multitenant.fields import *
-from django_multitenant.models import *
-#from apps.corecode.models import AcademicSession, AcademicTerm, StudentClass
-from users.models import *
+
 from django.db import models
-from moneyfield import MoneyField
-from decimal import Decimal
+from django.utils.translation import gettext_lazy as _
+from django_multitenant.fields import TenantForeignKey
+from django_multitenant.models import TenantModel
+
+from users.constants import CURRENCY_CODES
+from users.models import Account
 
 
+class TenantScopedModel(TenantModel):
+    """Base for every finance row: a UUID key plus the owning school."""
 
-class AcademicYear(TenantModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='%(class)ss')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class TenantMeta:
+        tenant_field_name = 'account_id'
+
+    class Meta:
+        abstract = True
+
+
+class AcademicYear(TenantScopedModel):
     name = models.CharField(max_length=20)
-    school = TenantForeignKey(School, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    account = TenantForeignKey(Account, on_delete=models.CASCADE)
-    
-    class TenantMeta:
-        tenant_field_name = 'account_id'
+    starts_on = models.DateField(null=True, blank=True)
+    ends_on = models.DateField(null=True, blank=True)
 
-class FinanceCategory(TenantModel):
-    name = models.CharField(max_length=50)
-    description = models.TextField()
-    school = TenantForeignKey(School, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class TenantMeta:
-        tenant_field_name = 'account_id'
-
-class Expense(TenantModel):
-    description = models.CharField(max_length=100)
-    amount = MoneyField(max_digits=10, decimal_places=2)
-    category = TenantForeignKey(FinanceCategory, on_delete=models.CASCADE)
-    academic_year = TenantForeignKey(AcademicYear, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class TenantMeta:
-        tenant_field_name = 'account_id'
-
-class Revenue(TenantModel):
-    source = models.CharField(max_length=100)
-    amount = MoneyField(max_digits=10, decimal_places=2)
-    category = TenantForeignKey(FinanceCategory, on_delete=models.CASCADE)
-    academic_year = TenantForeignKey(AcademicYear, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class TenantMeta:
-        tenant_field_name = 'account_id'
-
-class Transaction(TenantModel):
-    TYPE_CHOICES = [
-        ('income', 'Income'),
-        ('expense', 'Expense'),
-    ]
-
-    type = models.CharField(max_length=10, choices=TYPE_CHOICES)
-    date = models.DateField()
-    description = models.CharField(max_length=100)
-    amount = MoneyField(max_digits=10, decimal_places=2)
-    school = TenantForeignKey(School, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class TenantMeta:
-        tenant_field_name = 'account_id'
-
-class Payment(TenantModel):
-    student = TenantForeignKey(Student, on_delete=models.CASCADE)  # You might need to import the Student model
-    amount = MoneyField(max_digits=10, decimal_places=2)
-    academic_year = TenantForeignKey(AcademicYear, on_delete=models.CASCADE)
-    school = TenantForeignKey(School, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class TenantMeta:
-        tenant_field_name = 'account_id'
-        
-        
-        
-class FinanceReport(models.Model):
-    academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE)
-    school = models.ForeignKey(School, on_delete=models.CASCADE)
-    report_date = models.DateField()
-
-    # Income fields
-    tuition_fees = MoneyField(max_digits=10, decimal_places=2)
-    other_income = MoneyField(max_digits=10, decimal_places=2)
-    total_income = MoneyField(max_digits=10, decimal_places=2)
-
-    # Expense fields
-    salaries = MoneyField(max_digits=10, decimal_places=2)
-    utilities = MoneyField(max_digits=10, decimal_places=2)
-    other_expenses = MoneyField(max_digits=10, decimal_places=2)
-    total_expenses = MoneyField(max_digits=10, decimal_places=2)
-
-    # Net income/loss field
-    net_income_loss = MoneyField(max_digits=10, decimal_places=2)
+    class Meta:
+        ordering = ['-name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['account', 'name'], name='unique_academic_year_per_account',
+            ),
+        ]
 
     def __str__(self):
-        
-        return f"Finance report for {self.academic_year} - {self.school}" 
+        return self.name
+
+
+class FinanceCategory(TenantScopedModel):
+    name = models.CharField(max_length=50)
+    description = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name_plural = _('finance categories')
+        ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['account', 'name'], name='unique_finance_category_per_account',
+            ),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class MoneyModel(TenantScopedModel):
+    """Amounts are stored as a decimal plus an ISO 4217 code.
+
+    The previous `moneyfield` dependency is unmaintained and was never
+    installed; two plain columns keep the schema portable to Citus.
+    """
+
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=3, choices=CURRENCY_CODES, default='UGX')
+
+    class Meta:
+        abstract = True
+
+
+class Expense(MoneyModel):
+    description = models.CharField(max_length=100)
+    category = TenantForeignKey(FinanceCategory, on_delete=models.PROTECT, related_name='expenses')
+    academic_year = TenantForeignKey(
+        AcademicYear, on_delete=models.PROTECT, related_name='expenses',
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.description} ({self.amount} {self.currency})'
+
+
+class Revenue(MoneyModel):
+    source = models.CharField(max_length=100)
+    category = TenantForeignKey(FinanceCategory, on_delete=models.PROTECT, related_name='revenues')
+    academic_year = TenantForeignKey(
+        AcademicYear, on_delete=models.PROTECT, related_name='revenues',
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.source} ({self.amount} {self.currency})'
+
+
+class Transaction(MoneyModel):
+    class Type(models.TextChoices):
+        INCOME = 'INCOME', _('Income')
+        EXPENSE = 'EXPENSE', _('Expense')
+
+    type = models.CharField(max_length=10, choices=Type.choices)
+    date = models.DateField()
+    description = models.CharField(max_length=100)
+
+    class Meta:
+        ordering = ['-date']
+
+    def __str__(self):
+        return f'{self.get_type_display()}: {self.description}'
+
+
+class Payment(MoneyModel):
+    student = TenantForeignKey(
+        'users.Student', on_delete=models.PROTECT, related_name='payments',
+    )
+    academic_year = TenantForeignKey(
+        AcademicYear, on_delete=models.PROTECT, related_name='payments',
+    )
+    paid_on = models.DateField()
+
+    class Meta:
+        ordering = ['-paid_on']
+
+    def __str__(self):
+        return f'{self.student} {self.amount} {self.currency}'
+
+
+class FinanceReport(TenantScopedModel):
+    academic_year = TenantForeignKey(AcademicYear, on_delete=models.CASCADE, related_name='reports')
+    report_date = models.DateField()
+    currency = models.CharField(max_length=3, choices=CURRENCY_CODES, default='UGX')
+
+    tuition_fees = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    other_income = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    salaries = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    utilities = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    other_expenses = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ['-report_date']
+
+    @property
+    def total_income(self):
+        return self.tuition_fees + self.other_income
+
+    @property
+    def total_expenses(self):
+        return self.salaries + self.utilities + self.other_expenses
+
+    @property
+    def net_income(self):
+        return self.total_income - self.total_expenses
+
+    def __str__(self):
+        return f'Finance report for {self.academic_year} on {self.report_date}'
