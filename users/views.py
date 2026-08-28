@@ -62,10 +62,9 @@ class UserViewSet(viewsets.ModelViewSet):
     API endpoint that allows users to be viewed or edited.
     """
 
-    print("UserViewSet executed")
     queryset = User.objects.all().order_by("-date_joined")
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
 
 
 class GroupViewSet(viewsets.ModelViewSet):
@@ -73,10 +72,9 @@ class GroupViewSet(viewsets.ModelViewSet):
     API endpoint that allows groups to be viewed or edited.
     """
 
-    print("GroupViewSet executed")
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
 
 
 
@@ -132,12 +130,15 @@ class AccountDetailView(RetrieveAPIView):
 
     queryset = Account.objects.all()
     serializer_class = AccountSerializer
-    
-    
+    permission_classes = [permissions.IsAuthenticated]
+
+
 class AccountListView(APIView):
     """
     List all Accounts, or create a new account.
     """
+
+    permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
         accounts = Account.objects.all()
