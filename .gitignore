@@ -19,4 +19,4 @@ staticfiles/
 .vscode/
 .idea/
 .DS_Store
-static/
+/staticfiles/

@@ -1,0 +1,50 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}{{ account }} · Smero{% endblock %}
+
+{% block content %}
+  <h1>{{ account }}</h1>
+
+  <div class="cards">
+    <div class="card">
+      <div class="label">Students</div>
+      <div class="value">{{ student_count }}</div>
+    </div>
+    <div class="card">
+      <div class="label">Staff</div>
+      <div class="value">{{ teacher_count }}</div>
+    </div>
+    <div class="card">
+      <div class="label">Classes</div>
+      <div class="value">{{ level_count }}</div>
+    </div>
+    <div class="card">
+      <div class="label">Revenue</div>
+      <div class="value">{{ revenue_total|default:0 }}</div>
+    </div>
+    <div class="card">
+      <div class="label">Expenses</div>
+      <div class="value">{{ expense_total|default:0 }}</div>
+    </div>
+  </div>
+
+  <section class="panel">
+    <h2>Latest payments</h2>
+    <table>
+      <thead>
+        <tr><th>Student</th><th>Paid on</th><th class="numeric">Amount</th></tr>
+      </thead>
+      <tbody>
+        {% for payment in recent_payments %}
+          <tr>
+            <td>{{ payment.student }}</td>
+            <td>{{ payment.paid_on }}</td>
+            <td class="numeric">{{ payment.amount }} {{ payment.currency }}</td>
+          </tr>
+        {% empty %}
+          <tr><td class="empty" colspan="3">No payments recorded yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

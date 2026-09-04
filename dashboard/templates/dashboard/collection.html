@@ -1,0 +1,26 @@
+{% extends 'dashboard/base.html' %}
+
+{% comment %}Shared layout for the simple "list plus inline create form" pages.{% endcomment %}
+
+{% block content %}
+  <h1>{% block heading %}{% endblock %}</h1>
+
+  {% if may_write %}
+    <form class="inline-form panel"
+          hx-post="{{ post_url }}"
+          hx-target="#rows"
+          hx-swap="outerHTML"
+          hx-on::after-request="if (event.detail.successful) this.reset()">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">Add</button>
+    </form>
+  {% endif %}
+
+  <section class="panel">
+    <table>
+      <thead><tr>{% block columns %}{% endblock %}</tr></thead>
+      {% block rows %}{% endblock %}
+    </table>
+  </section>
+{% endblock %}

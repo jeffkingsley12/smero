@@ -1,0 +1,16 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}{{ title }} · Smero{% endblock %}
+
+{% block content %}
+  <h1>{{ title }}</h1>
+
+  <div class="panel">
+    <form class="stacked-form" method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">Save</button>
+      <a href="{% url 'dashboard:people' %}"><button class="subtle" type="button">Cancel</button></a>
+    </form>
+  </div>
+{% endblock %}

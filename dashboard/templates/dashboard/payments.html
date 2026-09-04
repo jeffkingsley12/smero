@@ -1,0 +1,7 @@
+{% extends 'dashboard/collection.html' %}
+
+{% block heading %}Student payments{% endblock %}
+
+{% block columns %}<th>Student</th><th>Year</th><th>Paid on</th><th class="numeric">Amount</th>{% endblock %}
+
+{% block rows %}{% include 'dashboard/partials/payments_rows.html' %}{% endblock %}

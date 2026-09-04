@@ -1,0 +1,7 @@
+<tbody id="rows">
+  {% for row in rows %}
+    <tr><td>{{ row.name }}</td><td>{{ row.starts_on|default:'—' }}</td><td>{{ row.ends_on|default:'—' }}</td></tr>
+  {% empty %}
+    <tr><td class="empty" colspan="3">No academic years yet.</td></tr>
+  {% endfor %}
+</tbody>

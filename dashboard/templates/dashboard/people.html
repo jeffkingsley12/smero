@@ -1,0 +1,32 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}People · Smero{% endblock %}
+
+{% block content %}
+  <h1>People</h1>
+
+  <form class="toolbar"
+        hx-get="{% url 'dashboard:people' %}"
+        hx-target="#people-rows"
+        hx-trigger="input changed delay:300ms from:find input, change from:find select">
+    <input type="search" name="q" value="{{ q }}" placeholder="Search name or email">
+    <select name="user_type">
+      <option value="">Every role</option>
+      {% for value, label in user_types %}
+        <option value="{{ value }}" {% if value == selected_type %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    {% if may_write %}
+      <a href="{% url 'dashboard:person-create' %}"><button type="button">Add person</button></a>
+    {% endif %}
+  </form>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th><th>Role</th><th>Class</th><th>Email</th><th>Status</th><th></th>
+      </tr>
+    </thead>
+    {% include 'dashboard/partials/people_rows.html' %}
+  </table>
+{% endblock %}

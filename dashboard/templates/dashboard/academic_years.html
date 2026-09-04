@@ -1,0 +1,7 @@
+{% extends 'dashboard/collection.html' %}
+
+{% block heading %}Academic years{% endblock %}
+
+{% block columns %}<th>Name</th><th>Starts</th><th>Ends</th>{% endblock %}
+
+{% block rows %}{% include 'dashboard/partials/academic_years_rows.html' %}{% endblock %}
