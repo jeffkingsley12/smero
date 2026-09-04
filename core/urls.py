@@ -20,6 +20,8 @@ from django.contrib import admin
 from django.urls import include, path
 
 urlpatterns = [
+    path('', include('dashboard.urls', namespace='dashboard')),
+    path('accounts/', include('django.contrib.auth.urls')),
     path('admin/', admin.site.urls),
     path('api/', include('users.urls', namespace='users')),
     path('api/finance/', include('finance.urls', namespace='finance')),

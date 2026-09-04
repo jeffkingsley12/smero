@@ -1,0 +1,7 @@
+<tbody id="rows">
+  {% for row in rows %}
+    <tr><td>{{ row.name }}</td><td>{{ row.description|default:'—' }}</td></tr>
+  {% empty %}
+    <tr><td class="empty" colspan="2">No categories yet.</td></tr>
+  {% endfor %}
+</tbody>

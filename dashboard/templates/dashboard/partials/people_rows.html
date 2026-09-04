@@ -1,0 +1,23 @@
+<tbody id="people-rows">
+  {% for person in people %}
+    <tr id="person-{{ person.pk }}">
+      <td>{{ person.get_full_name|default:person.email }}</td>
+      <td>{{ person.get_user_type_display|default:'—' }}</td>
+      <td>{{ person.level.name|default:'—' }}</td>
+      <td>{{ person.email }}</td>
+      <td>{{ person.get_status_display }}</td>
+      <td class="numeric">
+        {% if may_write %}
+          <a href="{% url 'dashboard:person-edit' person.pk %}"><button class="subtle" type="button">Edit</button></a>
+          <button class="subtle"
+                  hx-delete="{% url 'dashboard:person-delete' person.pk %}"
+                  hx-target="#person-{{ person.pk }}"
+                  hx-swap="outerHTML"
+                  hx-confirm="Remove {{ person }}?">Remove</button>
+        {% endif %}
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td class="empty" colspan="6">Nobody here yet.</td></tr>
+  {% endfor %}
+</tbody>

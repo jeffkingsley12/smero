@@ -1,0 +1,7 @@
+{% extends 'dashboard/collection.html' %}
+
+{% block heading %}Expenses{% endblock %}
+
+{% block columns %}<th>Description</th><th>Category</th><th>Year</th><th class="numeric">Amount</th>{% endblock %}
+
+{% block rows %}{% include 'dashboard/partials/expenses_rows.html' %}{% endblock %}

@@ -37,6 +37,7 @@ ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='localhost,127.0.0.1', ca
 INSTALLED_APPS = [
     'users',
     'finance',
+    'dashboard',
     'rest_framework',
     'django_multitenant',
     'django.contrib.admin',
@@ -116,6 +117,10 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 AUTH_USER_MODEL = 'users.CommonUser'
+
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'dashboard:home'
+LOGOUT_REDIRECT_URL = 'login'
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/

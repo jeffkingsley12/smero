@@ -1,0 +1,35 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Smero{% endblock %}</title>
+  <script src="{% static 'dashboard/htmx.min.js' %}" defer></script>
+  <link rel="stylesheet" href="{% static 'dashboard/app.css' %}">
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  <header>
+    <a class="brand" href="{% url 'dashboard:home' %}">Smero</a>
+    {% if user.is_authenticated %}
+      <nav>
+        <a href="{% url 'dashboard:people' %}">People</a>
+        <a href="{% url 'dashboard:levels' %}">Classes</a>
+        <a href="{% url 'dashboard:academic-years' %}">Years</a>
+        <a href="{% url 'dashboard:categories' %}">Categories</a>
+        <a href="{% url 'dashboard:revenues' %}">Revenue</a>
+        <a href="{% url 'dashboard:expenses' %}">Expenses</a>
+        <a href="{% url 'dashboard:payments' %}">Payments</a>
+      </nav>
+      <form class="logout" action="{% url 'logout' %}" method="post">
+        {% csrf_token %}
+        <span>{{ user.get_short_name }}</span>
+        <button type="submit">Sign out</button>
+      </form>
+    {% endif %}
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,7 @@
+<tbody id="rows">
+  {% for row in rows %}
+    <tr><td>{{ row.name }}</td><td>{{ row.get_school_class_display }}</td></tr>
+  {% empty %}
+    <tr><td class="empty" colspan="2">No classes yet.</td></tr>
+  {% endfor %}
+</tbody>

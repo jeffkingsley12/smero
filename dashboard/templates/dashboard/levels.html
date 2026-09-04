@@ -1,0 +1,7 @@
+{% extends 'dashboard/collection.html' %}
+
+{% block heading %}Classes{% endblock %}
+
+{% block columns %}<th>Name</th><th>Stage</th>{% endblock %}
+
+{% block rows %}{% include 'dashboard/partials/levels_rows.html' %}{% endblock %}

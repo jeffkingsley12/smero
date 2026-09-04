@@ -1,0 +1,7 @@
+{% extends 'dashboard/collection.html' %}
+
+{% block heading %}Revenue{% endblock %}
+
+{% block columns %}<th>Source</th><th>Category</th><th>Year</th><th class="numeric">Amount</th>{% endblock %}
+
+{% block rows %}{% include 'dashboard/partials/revenues_rows.html' %}{% endblock %}

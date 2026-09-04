@@ -1,0 +1,7 @@
+<tbody id="rows">
+  {% for row in rows %}
+    <tr><td>{{ row.student }}</td><td>{{ row.academic_year.name }}</td><td>{{ row.paid_on }}</td><td class="numeric">{{ row.amount }} {{ row.currency }}</td></tr>
+  {% empty %}
+    <tr><td class="empty" colspan="4">No payments recorded.</td></tr>
+  {% endfor %}
+</tbody>
